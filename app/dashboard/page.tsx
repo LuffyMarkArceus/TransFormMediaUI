@@ -1,13 +1,18 @@
-import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
-import AuthTest from "../../components/AuthTest";
+import { auth } from "@clerk/nextjs/server"
+import ImageGrid from "./image-grid"
 
 export default function DashboardPage() {
+  
   return (
-    <SignedIn>
-      <div>
-        <h1>Dashboard</h1>
-        <AuthTest />
+    <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold">Your Images</h1>
+        <p className="text-muted-foreground">
+          Images you’ve uploaded to Universal Media Service
+        </p>
       </div>
-    </SignedIn>
-  );
+
+      <ImageGrid />
+    </div>
+  )
 }
