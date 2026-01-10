@@ -17,11 +17,29 @@ type ImageMedia = {
   createdAt: string
 }
 
+function formatBytes(bytes: number) {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+    }
+
+function formatDate(iso: string) {
+return new Date(iso).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+});
+}
+
 export default function ImageGrid() {
   const { getToken } = useAuth()
   const [images, setImages] = useState<ImageMedia[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  
 
   useEffect(() => {
     async function fetchImages() {
@@ -69,35 +87,52 @@ export default function ImageGrid() {
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
       {images.map((img) => (
         <div
           key={img.id}
-          className="rounded-lg border overflow-hidden bg-background"
+          className="group relative overflow-hidden rounded-xl border bg-background shadow-sm transition hover:shadow-md"
         >
-          <div className="relative aspect-square">
-            {/* <Image
-              src={img.originalURL}
-              alt="uploaded image"
-              fill
-              className="object-cover"
-            /> */}
+          {/* Image */}
+          <div className="aspect-square overflow-hidden bg-muted">
             <img
-                src={img.originalURL}
-                alt="uploaded image"
-                className="absolute inset-0 w-full h-full object-cover"
-                />
+              src={img.originalURL}
+              alt={img.name ?? "uploaded image"}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              loading="lazy"
+            />
           </div>
 
-          <div className="p-2 text-xs text-muted-foreground space-y-1">
-            <h4><strong>{img.name}</strong></h4>
-            <span className="flex justify-between">
-                <div>{(img.sizeBytes / 1024).toFixed(1)} KB</div>
-                <div>{new Date(img.createdAt).toDateString()}</div>
-            </span>
+          {/* Metadata */}
+          <div className="space-y-1 p-3">
+            <p className="truncate text-sm font-medium">
+              {img.name ?? "Untitled image"}
+            </p>
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{formatBytes(img.sizeBytes)}</span>
+              <span>{formatDate(img.createdAt)}</span>
+            </div>
+          </div>
+
+          {/* Hover actions */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
+            <div className="pointer-events-auto flex gap-2">
+              <button
+                onClick={() => window.open(img.originalURL, "_blank")}
+                className="rounded-md bg-white/90 px-3 py-1 text-xs font-medium text-black hover:bg-white"
+              >
+                View
+              </button>
+              <button
+                onClick={() => navigator.clipboard.writeText(img.originalURL)}
+                className="rounded-md bg-white/90 px-3 py-1 text-xs font-medium text-black hover:bg-white"
+              >
+                Copy URL
+              </button>
+            </div>
           </div>
         </div>
       ))}
     </div>
-  )
+  );
 }
