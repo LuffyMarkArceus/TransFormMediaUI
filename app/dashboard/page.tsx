@@ -5,21 +5,10 @@ import axios from "axios"
 import { useAuth } from "@clerk/nextjs"
 
 import ImageGrid from "./image-grid"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import UploadDropzone from "@/components/UploadDropZone"
 
-export interface ImageMedia {
-  id: string
-  userID: string
-  name?: string
-  type: "image"
-  originalURL: string
-  format: string
-  sizeBytes: number
-  status: string
-  createdAt: string
-}
+import type { ImageMedia } from "@/types/media"
 
 export default function DashboardPage() {
   const { getToken } = useAuth()
@@ -35,6 +24,8 @@ export default function DashboardPage() {
       const res = await axios.get("/api/v1/images", {
         headers: { Authorization: `Bearer ${token}` },
       })
+
+      console.log("Fetched images:", res.data)
 
       // ✅ ALWAYS normalize
       setImages(Array.isArray(res.data) ? res.data : [])
@@ -91,11 +82,13 @@ export default function DashboardPage() {
 
       {loading ? (
         <p className="text-muted-foreground">Loading images…</p>
+      ) : error ? (
+        <p className="text-red-500">{error}</p>
       ) : (
         <ImageGrid
           images={images}
           setImages={setImages}
-          onChange={fetchImages}
+          onReload={fetchImages}
         />
       )}
     </div>

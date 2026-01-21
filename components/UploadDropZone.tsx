@@ -30,7 +30,7 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
       const formData = new FormData()
       formData.append("file", file)
 
-      const res = await axios.post("/api/v1/images", formData, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/images`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
