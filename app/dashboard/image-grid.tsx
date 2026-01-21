@@ -1,75 +1,30 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import Image from "next/image"
-import { useAuth } from "@clerk/nextjs"
-import axios from "axios"
-
-type ImageMedia = {
-  id: string
-  userID: string
-  name: string
-  type: "image"
-  originalURL: string
-  format: string
-  sizeBytes: number
-  status: string
-  createdAt: string
-}
+import { ImageMedia } from "./page"
 
 function formatBytes(bytes: number) {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-    }
+  if (bytes === 0) return "0 B"
+  const k = 1024
+  const sizes = ["B", "KB", "MB", "GB"]
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
+}
 
 function formatDate(iso: string) {
-return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
-});
+  })
 }
 
-export default function ImageGrid() {
-  const { getToken } = useAuth()
-  const [images, setImages] = useState<ImageMedia[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+interface ImageGridProps {
+  images: ImageMedia[]
+  loading: boolean
+  error: string | null
+}
 
-  
-
-  useEffect(() => {
-    async function fetchImages() {
-      try {
-        const token = await getToken()
-        // console.log("Fetched token:", token)
-
-        const res = await axios.get("/api/v1/images", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        console.log("API response:", res)
-
-        if (res.statusText !== "OK") {
-          throw new Error("Failed to fetch images")
-        }
-
-        const data = await res.data
-        setImages(data)
-      } catch (err) {
-        setError("Could not load images")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchImages()
-  }, [getToken])
-
+export default function ImageGrid({ images, loading, error }: ImageGridProps) {
   if (loading) {
     return <div className="text-muted-foreground">Loading images...</div>
   }
@@ -78,7 +33,7 @@ export default function ImageGrid() {
     return <div className="text-red-500">{error}</div>
   }
 
-  if (images.length === 0) {
+  if (images && images.length === 0) {
     return (
       <div className="text-muted-foreground text-center py-12">
         No images uploaded yet.
@@ -88,7 +43,7 @@ export default function ImageGrid() {
 
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-      {images.map((img) => (
+      {images && images.map((img) => (
         <div
           key={img.id}
           className="group relative overflow-hidden rounded-xl border bg-background shadow-sm transition hover:shadow-md"
@@ -134,5 +89,5 @@ export default function ImageGrid() {
         </div>
       ))}
     </div>
-  );
+  )
 }

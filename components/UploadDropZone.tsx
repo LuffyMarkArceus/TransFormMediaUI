@@ -1,99 +1,100 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import axios from "axios";
-import { useAuth } from "@clerk/nextjs";
+import { useCallback, useState } from "react"
+import { useAuth } from "@clerk/nextjs"
+import axios from "axios"
+import { Card } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { ImageMedia } from "@/app/dashboard/page"
 
-export default function UploadDropzone() {
-  const { getToken } = useAuth();
 
-  const [file, setFile] = useState<File | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
-  const [error, setError] = useState("");
+interface UploadDropZoneProps {
+  onUploadComplete: (media: ImageMedia) => void
+}
 
-  async function upload() {
-    if (!file) return;
+export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps) {
+  const { getToken } = useAuth()
+  const [dragging, setDragging] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
 
-    setStatus("uploading");
-    setProgress(0);
-    setError("");
-
+  const uploadFile = async (file: File) => {
     try {
-      const token = await getToken();
+      setUploading(true)
+      setProgress(0)
+      setError(null)
 
-      const formData = new FormData();
-      formData.append("file", file);
+      const token = await getToken()
 
-      await axios.post(
-        "http://localhost:8080/api/v1/images",
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          onUploadProgress: (e) => {
-            if (!e.total) return;
-            setProgress(Math.round((e.loaded * 100) / e.total));
-          },
-        }
-      );
+      const formData = new FormData()
+      formData.append("file", file)
 
-      setStatus("success");
-      setFile(null);
-    } catch (err: any) {
-      setStatus("error");
-      setError(err?.response?.data?.error || "Upload failed");
+      const res = await axios.post("/api/v1/images", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        onUploadProgress: (evt) => {
+          if (!evt.total) return
+          const pct = Math.round((evt.loaded * 100) / evt.total)
+          setProgress(pct)
+        },
+      })
+
+      console.log("Upload response:", res)
+
+      onUploadComplete(res.data)
+    } catch (err) {
+      console.error("Upload error:", err)
+      setError("Upload failed. Please try again.")
+    } finally {
+      setUploading(false)
+      setProgress(0)
     }
   }
 
+  const onDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      setDragging(false)
+      if (!e.dataTransfer.files?.length) return
+      uploadFile(e.dataTransfer.files[0])
+    },
+    []
+  )
+
   return (
-    <div className="max-w-xl mx-auto p-6 bg-white dark:bg-neutral-900 rounded-xl shadow">
-      <h2 className="text-xl font-semibold mb-4">Upload Image</h2>
+    <Card
+      onDragOver={(e) => {
+        e.preventDefault()
+        setDragging(true)
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={onDrop}
+      className={`relative flex flex-col items-center justify-center gap-2 border-2 border-dashed p-6 text-center transition ${
+        dragging ? "border-primary bg-primary/5" : "border-muted"
+      }`}
+    >
+      <input
+        type="file"
+        accept="image/*"
+        className="absolute inset-0 cursor-pointer opacity-0"
+        onChange={(e) => {
+          if (e.target.files?.[0]) uploadFile(e.target.files[0])
+        }}
+      />
 
-      <label
-        className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer hover:border-blue-500 transition"
-      >
-        <input
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-        />
-        <span className="text-sm text-gray-500">
-          {file ? file.name : "Click to select image"}
-        </span>
-      </label>
+      <p className="text-sm font-medium">Drag & drop images here</p>
+      <p className="text-xs text-muted-foreground">or click to browse</p>
 
-      {status === "uploading" && (
-        <div className="mt-4">
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-blue-600 h-2 rounded-full transition-all"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="text-sm mt-1">{progress}%</p>
+      {uploading && (
+        <div className="w-full max-w-xs pt-2">
+          <Progress value={progress} />
+          <p className="mt-1 text-xs text-muted-foreground">Uploading… {progress}%</p>
         </div>
       )}
 
-      {status === "error" && (
-        <p className="text-red-500 text-sm mt-3">{error}</p>
-      )}
-
-      {status === "success" && (
-        <p className="text-green-500 text-sm mt-3">
-          ✅ Upload successful
-        </p>
-      )}
-
-      <button
-        onClick={upload}
-        disabled={!file || status === "uploading"}
-        className="mt-4 w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-      >
-        Upload
-      </button>
-    </div>
-  );
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </Card>
+  )
 }
