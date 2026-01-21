@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import axios from "axios"
 import { useAuth } from "@clerk/nextjs"
 
@@ -28,27 +28,24 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function fetchImages() {
-      try {
-        const token = await getToken()
+  const fetchImages = useCallback(async () => {
+    setLoading(true)
+    try {
+      const token = await getToken()
+      const res = await axios.get("/api/v1/images", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
 
-        const res = await axios.get("/api/v1/images", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        setImages(res.data)
-      } catch (err) {
-        setError("Could not load images")
-      } finally {
-        setLoading(false)
-      }
+      // ✅ ALWAYS normalize
+      setImages(Array.isArray(res.data) ? res.data : [])
+    } finally {
+      setLoading(false)
     }
-
-    fetchImages()
   }, [getToken])
+
+  useEffect(() => {
+    fetchImages()
+  }, [fetchImages])
 
   const totalSizeMB = (
     !images || images.length === 0 ? 0 :images.reduce((acc, img) => acc + img.sizeBytes, 0) /
@@ -92,8 +89,15 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Image Grid */}
-      <ImageGrid images={images} loading={loading} error={error} />
+      {loading ? (
+        <p className="text-muted-foreground">Loading images…</p>
+      ) : (
+        <ImageGrid
+          images={images}
+          setImages={setImages}
+          onChange={fetchImages}
+        />
+      )}
     </div>
   )
 }

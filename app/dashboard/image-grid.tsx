@@ -1,6 +1,8 @@
 "use client"
 
+import axios from "axios"
 import { ImageMedia } from "./page"
+import { useAuth } from "@clerk/nextjs"
 
 function formatBytes(bytes: number) {
   if (bytes === 0) return "0 B"
@@ -20,20 +22,31 @@ function formatDate(iso: string) {
 
 interface ImageGridProps {
   images: ImageMedia[]
-  loading: boolean
-  error: string | null
+  setImages: React.Dispatch<React.SetStateAction<ImageMedia[]>>
+  onChange: () => void
 }
 
-export default function ImageGrid({ images, loading, error }: ImageGridProps) {
-  if (loading) {
-    return <div className="text-muted-foreground">Loading images...</div>
-  }
+export default function ImageGrid({ images, setImages, onChange }: ImageGridProps) {
+    const { getToken } = useAuth()
 
-  if (error) {
-    return <div className="text-red-500">{error}</div>
-  }
+    async function deleteImage(id: string) {
+        const token = await getToken()
 
-  if (images && images.length === 0) {
+        // Optimistic update (safe now)
+        setImages(prev => prev.filter(img => img.id !== id))
+
+        await axios.delete(`/api/v1/images/${id}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+        })
+
+        // 🔁 ensure backend + UI are in sync
+        onChange()
+    }
+
+
+  if (images.length === 0) {
     return (
       <div className="text-muted-foreground text-center py-12">
         No images uploaded yet.
@@ -43,7 +56,7 @@ export default function ImageGrid({ images, loading, error }: ImageGridProps) {
 
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-      {images && images.map((img) => (
+      {images.map((img) => (
         <div
           key={img.id}
           className="group relative overflow-hidden rounded-xl border bg-background shadow-sm transition hover:shadow-md"
@@ -83,6 +96,16 @@ export default function ImageGrid({ images, loading, error }: ImageGridProps) {
                 className="rounded-md bg-white/90 px-3 py-1 text-xs font-medium text-black hover:bg-white"
               >
                 Copy URL
+              </button>
+              <button
+                onClick={() => {
+                    console.log("Deleting image with id:", img.id)
+                    deleteImage(img.id)
+                    console.log("Deleted image with id:", img.id)
+                }}
+                className="rounded-md bg-red-500 px-2 py-1 text-xs font-medium text-white hover:bg-red-600"
+                >
+                Delete
               </button>
             </div>
           </div>
