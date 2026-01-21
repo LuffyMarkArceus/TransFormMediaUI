@@ -3,26 +3,12 @@
 import axios from "axios"
 import type { ImageMedia } from "@/types/media"
 import { useAuth } from "@clerk/nextjs"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import RenameImageModal from "@/components/rename-image-modal"
 import ImageViewerModal from "@/components/image-viewer-modal"
 
-function formatBytes(bytes: number) {
-  if (bytes === 0) return "0 B"
-  const k = 1024
-  const sizes = ["B", "KB", "MB", "GB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  })
-}
+import { formatBytes, formatDate } from "@/lib/helpers"
 
 interface ImageGridProps {
   images: ImageMedia[]
@@ -36,8 +22,9 @@ export default function ImageGrid({ images, setImages, onReload }: ImageGridProp
     const [saving, setSaving] = useState(false);
 
     // For Image Viewer Modal
-    const [selectedImage, setSelectedImage] = useState<ImageMedia | null>(null);
     const [viewerOpen, setViewerOpen] = useState(false);
+    const [currentIndex, setCurrentIndex] = useState<number | null>(null);
+    const selectedImage = currentIndex !== null ? images[currentIndex] : null;
 
     // Clerk Auth
     const { getToken } = useAuth();
@@ -81,6 +68,19 @@ export default function ImageGrid({ images, setImages, onReload }: ImageGridProp
         onReload();
     }
 
+    const handleNext = () => {
+      setCurrentIndex((i) => {
+        if (i === null) return null;
+        return Math.min((i + 1), images.length - 1);
+      });
+    }
+    const handlePrev = () => {
+      setCurrentIndex((i) => {
+        if (i === null) return null;
+        return Math.max((i - 1), 0);
+      });
+    }
+
   if (images.length === 0) {
     return (
       <div className="text-muted-foreground text-center py-12">
@@ -121,7 +121,7 @@ export default function ImageGrid({ images, setImages, onReload }: ImageGridProp
               <button
                 // onClick={() => window.open(img.originalURL, "_blank")}
                 onClick={() => {
-                  setSelectedImage(img);
+                  setCurrentIndex(images.findIndex(i => i.id === img.id));
                   setViewerOpen(true);
                 }}
                 className="rounded-md bg-white/90 px-3 py-1 text-xs font-medium text-black hover:bg-white"
@@ -170,8 +170,10 @@ export default function ImageGrid({ images, setImages, onReload }: ImageGridProp
         open={viewerOpen}
         onClose={() => {
           setViewerOpen(false);
-          setSelectedImage(null);
+          setCurrentIndex(null);
         }}
+        onNext={currentIndex !== null && currentIndex < images.length - 1 ? handleNext : undefined}
+        onPrev={currentIndex !== null && currentIndex > 0 ? handlePrev : undefined}
       />
     </div>
   )
