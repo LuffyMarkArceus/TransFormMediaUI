@@ -5,7 +5,7 @@ import { useAuth } from "@clerk/nextjs"
 import axios from "axios"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { ImageMedia } from "@/app/dashboard/page"
+import type { ImageMedia } from "@/types/media"
 
 
 interface UploadDropZoneProps {
