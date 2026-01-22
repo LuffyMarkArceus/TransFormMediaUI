@@ -77,7 +77,7 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
     >
       <input
         type="file"
-        accept="image/*"
+        accept="image/*"                                                      // Accept only image files
         className="absolute inset-0 cursor-pointer opacity-0"
         onChange={(e) => {
           if (e.target.files?.[0]) uploadFile(e.target.files[0])
