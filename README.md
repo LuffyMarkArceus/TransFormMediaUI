@@ -39,13 +39,13 @@
 - [ ] Replace image
 - [ ] Batch operations (multi-select delete)
 
-## UI / UX
-- [x] Dashboard layout with TopNav
-- [x] Light / Dark mode
-- [x] ShadCN UI components
-- [x] Toast notifications
-- [ ] Skeleton loaders
-- [ ] Accessibility audit
+## Theme & Appearance
+- [x] Site-wide light / dark mode toggle
+- [x] Persist theme preference (localStorage / cookie)
+- [x] Respect system preference on first load
+- [x] Theme hydration without flicker
+- [x] Consistent dark mode across all routes
+
 
 ## Overall Status
 - [x] Core image workflows complete

@@ -11,8 +11,8 @@ export interface ImageMedia {
   format: string
   sizeBytes: number
   
-  width: number
-  height: number
+  width?: number
+  height?: number
   
   status: string
   createdAt: string
