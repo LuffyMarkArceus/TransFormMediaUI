@@ -26,6 +26,13 @@ export default function ImageGrid({ images, setImages, onReload }: ImageGridProp
     const [currentIndex, setCurrentIndex] = useState<number | null>(null);
     const selectedImage = currentIndex !== null ? images[currentIndex] : null;
 
+    useEffect(() => {
+      if (currentIndex === null) return;
+      if (currentIndex >= images.length) {
+        setCurrentIndex(images.length - 1);
+      }
+    }, [images.length]);
+
     // Clerk Auth
     const { getToken } = useAuth();
 
