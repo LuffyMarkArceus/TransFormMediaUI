@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import UploadDropzone from "@/components/UploadDropZone";
 import { redirect } from "next/navigation";
-import { ImageMedia } from "../dashboard/page";
+import { ImageMedia } from "@/types/media"
 
 export default async function UploadPage() {
   const { userId } = await auth();
