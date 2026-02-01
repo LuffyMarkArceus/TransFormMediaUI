@@ -58,7 +58,7 @@ export default function ImagePage({ params, }: ImagePageProps) {
   }, []);
 
   return (
-    <Card className="grid grid-cols-[1fr_320px] gap-6">
+    <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] gap-6">
       <ImagePreview
         imageId={imageId}
         params={processParams}
@@ -75,6 +75,6 @@ export default function ImagePage({ params, }: ImagePageProps) {
           onTransformChange(next);
         }}
       />
-    </Card>
+    </div>
   )
 }

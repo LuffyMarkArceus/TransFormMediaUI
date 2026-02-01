@@ -77,7 +77,7 @@ export function TransformPanel({ params, onChange, onProcessingStart }: Transfor
 
       {/* Format */}
       <div className="flex gap-2">
-        <label className="text-sm font-medium">Format</label>
+        <Label className="text-sm font-medium">Format : </Label>
         <Select
           value={params.format}
           onValueChange={(format) =>
@@ -98,8 +98,8 @@ export function TransformPanel({ params, onChange, onProcessingStart }: Transfor
 
       {/* Reset */}
       <Button
-        variant="ghost"
-        size="sm"
+        variant="outline"
+        size="lg"
         onClick={() =>
           onChange({
             w: 1920,

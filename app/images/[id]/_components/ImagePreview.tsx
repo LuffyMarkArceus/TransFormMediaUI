@@ -37,10 +37,10 @@ export function ImagePreview({ imageId, params, isProcessing, onLoadComplete, on
     }, [src]);
 
     return (
-        <Card className="relative flex items-center justify-center rounded-lg border bg-muted/30 p-4">
+        <div className="relative flex items-center justify-center rounded-lg border bg-muted/30 p-4">
             {loading && !error && <ImageSkeleton />}
 
-            <Card><img
+            <img
                 key={src} // 🚨 Critical: forces reload when params change - avoids stale & race condition issues. 
                 src={src}
                 alt="Processed image"
@@ -55,7 +55,6 @@ export function ImagePreview({ imageId, params, isProcessing, onLoadComplete, on
                 }}
                 draggable={false}
             />
-            </Card>
             {isProcessing && (
                 <Card className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -64,6 +63,6 @@ export function ImagePreview({ imageId, params, isProcessing, onLoadComplete, on
                     </div>
                 </Card>
             )}
-        </Card>
+        </div>
   )
 }
