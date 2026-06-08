@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useState } from "react"
 import { useAuth } from "@clerk/nextjs"
 import axios from "axios"
 import { Card } from "@/components/ui/card"
@@ -34,7 +34,7 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
   const getFileIcon = (file: File) => {
     if (file.type.startsWith("video/")) return <Film className="w-4 h-4" />
     if (file.type.startsWith("audio/")) return <Music className="w-4 h-4" />
-    return <Image className="w-4 h-4" />
+    return <Image className="w-4 h-4" alt="" />
   }
 
   const uploadFile = async (fileState: UploadFileState) => {
@@ -102,15 +102,12 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
     newFiles.forEach((fileState) => uploadFile(fileState))
   }
 
-  const onDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault()
-      setDragging(false)
-      if (!e.dataTransfer.files?.length) return
-      handleFiles(e.dataTransfer.files)
-    },
-    []
-  )
+  const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setDragging(false)
+    if (!e.dataTransfer.files?.length) return
+    handleFiles(e.dataTransfer.files)
+  }
 
   const acceptedTypes = ALL_SUPPORTED_TYPES.join(",")
 
@@ -137,7 +134,7 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
       />
 
       <div className="flex gap-3">
-        <Image className="w-5 h-5 text-muted-foreground" />
+        <Image className="w-5 h-5 text-muted-foreground" alt="" />
         <Film className="w-5 h-5 text-muted-foreground" />
         <Music className="w-5 h-5 text-muted-foreground" />
       </div>

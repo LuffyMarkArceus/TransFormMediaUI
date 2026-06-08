@@ -3,7 +3,7 @@
 import axios from "axios"
 import type { Media } from "@/types/media"
 import { useAuth } from "@clerk/nextjs"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { ImageIcon, Film, Music, Play, Trash2, CheckSquare, Square, X, RotateCcw, RefreshCw } from "lucide-react"
 
 import RenameMediaModal from "@/components/rename-media-modal"

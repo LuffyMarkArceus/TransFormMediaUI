@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function Home() {
-  const router = useRouter();
-
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
       <SignedOut>
@@ -24,7 +22,6 @@ export default function Home() {
       </SignedOut>
 
       <SignedIn>
-        {/* Client-safe redirect */}
         <RedirectToDashboard />
       </SignedIn>
     </main>
@@ -38,5 +35,5 @@ function RedirectToDashboard() {
     router.replace("/dashboard");
   }, [router]);
 
-  return <p>Redirecting to dashboard…</p>;
+  return <p>Redirecting to dashboard...</p>;
 }

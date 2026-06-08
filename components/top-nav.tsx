@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Skeleton } from "./ui/skeleton";
 
 export function TopNav() {
   const { isLoaded } = useUser();

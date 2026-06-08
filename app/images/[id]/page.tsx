@@ -38,10 +38,10 @@ export default function ImagePage({ params, }: ImagePageProps) {
 
   useEffect(() => {
     if (!areParamsEqual(processParams, uiParams)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUiParams(processParams);
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-  }, [processParams]);
+  }, [processParams, uiParams]);
 
   const debouncedUiParams = useDebouncedValue(uiParams, 400);
 

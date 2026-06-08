@@ -423,11 +423,9 @@ export default function MediaViewerModal({
 }
 
 function MetadataItem({
-  label,
   value,
   icon,
 }: {
-  label: string
   value: string
   icon?: React.ReactNode
 }) {

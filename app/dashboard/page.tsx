@@ -99,7 +99,7 @@ export default function DashboardPage() {
     if (isLoaded && isSignedIn) {
       fetchMedia(false)
     }
-  }, [isLoaded, isSignedIn, activeTab, debouncedSearch, sortBy, sortDir, refreshKey])
+  }, [isLoaded, isSignedIn, activeTab, debouncedSearch, sortBy, sortDir, refreshKey, fetchMedia])
 
   const handleLoadMore = () => {
     const newOffset = offset + PAGE_SIZE
@@ -235,7 +235,7 @@ export default function DashboardPage() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="all" className="flex items-center gap-1">
-            <Image className="w-4 h-4" />
+            <Image className="w-4 h-4" alt="" />
             All ({!isTrash ? total : "-"})
           </TabsTrigger>
           <TabsTrigger value="image" className="flex items-center gap-1">
