@@ -7,7 +7,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {ImagePreview} from "./_components/ImagePreview";
 import {TransformPanel} from "./_components/TransformPanel";
 import {areParamsEqual, type ProcessParams} from "@/lib/image-process-params";
-import { Card } from "@/components/ui/card";
+
 
 interface ImagePageProps {
   params: Promise<{ id: string }>;
@@ -40,6 +40,7 @@ export default function ImagePage({ params, }: ImagePageProps) {
     if (!areParamsEqual(processParams, uiParams)) {
       setUiParams(processParams);
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
   }, [processParams]);
 
   const debouncedUiParams = useDebouncedValue(uiParams, 400);
