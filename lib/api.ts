@@ -1,10 +1,11 @@
-/**
- * API paths and auth headers for the Go backend.
- *
- * In the browser we use same-origin `/api/v1/...` so Next.js rewrites proxy to the backend
- * (see next.config.ts BACKEND_URL). This keeps cookies/CORS simple in development.
- */
 export const API_V1 = "/api/v1"
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  total: number
+  page: number
+  limit: number
+}
 
 export function mediaPath(suffix = ""): string {
   return `${API_V1}/media${suffix}`
@@ -13,6 +14,27 @@ export function mediaPath(suffix = ""): string {
 export function mediaProcessPath(mediaId: string, query: URLSearchParams): string {
   const qs = query.toString()
   return `${mediaPath(`/${mediaId}/process`)}${qs ? `?${qs}` : ""}`
+}
+
+export function mediaListPath(params: {
+  type?: string
+  status?: string
+  search?: string
+  sortBy?: string
+  sortDir?: string
+  limit?: number
+  offset?: number
+}): string {
+  const sp = new URLSearchParams()
+  if (params.type) sp.set("type", params.type)
+  if (params.status) sp.set("status", params.status)
+  if (params.search) sp.set("search", params.search)
+  if (params.sortBy) sp.set("sortBy", params.sortBy)
+  if (params.sortDir) sp.set("sortDir", params.sortDir)
+  if (params.limit) sp.set("limit", String(params.limit))
+  if (params.offset) sp.set("offset", String(params.offset))
+  const qs = sp.toString()
+  return `${mediaPath()}${qs ? `?${qs}` : ""}`
 }
 
 export async function authHeaders(

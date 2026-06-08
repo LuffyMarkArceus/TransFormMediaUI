@@ -147,17 +147,29 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
       {files.length > 0 && (
         <div className="w-full max-w-xs pt-2">
           {files.map((f) => (
-            <div key={f.file.name} className="flex flex-col gap-1">
-              <div className="flex justify-between text-xs items-center">
-                <span className="flex items-center gap-1">
-                  {getFileIcon(f.file)}
-                  <span className="truncate max-w-[150px]">{f.file.name}</span>
-                </span>
-                {f.status === "error" && <span className="text-red-500">✗</span>}
-                {f.status === "success" && <span className="text-green-500">✓</span>}
+              <div key={f.file.name} className="flex flex-col gap-1">
+                <div className="flex justify-between text-xs items-center">
+                  <span className="flex items-center gap-1">
+                    {getFileIcon(f.file)}
+                    <span className="truncate max-w-[150px]">{f.file.name}</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    {f.status === "error" && (
+                      <>
+                        <span className="text-red-500">✗</span>
+                        <button
+                          onClick={() => uploadFile(f)}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Retry
+                        </button>
+                      </>
+                    )}
+                    {f.status === "success" && <span className="text-green-500">✓</span>}
+                  </span>
+                </div>
+                <Progress value={f.progress} />
               </div>
-              <Progress value={f.progress} />
-            </div>
           ))}
         </div>
       )}

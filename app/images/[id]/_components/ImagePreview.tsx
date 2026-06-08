@@ -42,6 +42,9 @@ export function ImagePreview({
       if (params.h) sp.set("h", String(params.h));
       if (params.format) sp.set("format", params.format);
       if (params.q) sp.set("q", String(params.q));
+      if (params.cw) sp.set("cw", String(params.cw));
+      if (params.ch) sp.set("ch", String(params.ch));
+      if (params.gravity) sp.set("gravity", params.gravity);
 
       try {
         const headers = await authHeaders(getToken);

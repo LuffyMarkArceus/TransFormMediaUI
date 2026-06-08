@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -8,11 +8,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Download, ImageIcon, Film, Music, FileText, Calendar, Maximize, Copy, ExternalLink, Check, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Download, ImageIcon, Film, Music, FileText, Calendar, Maximize, Copy, ExternalLink, Check, Loader2, ChevronLeft, ChevronRight, Share2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react"
 
 import type { Media } from "@/types/media"
 import { formatBytes, formatDate, formatDuration } from "@/lib/helpers"
 import { viewerMediaUrl } from "@/lib/media-url"
+import ShareDialog from "@/components/share-dialog"
 import axios from "axios"
 
 type MediaViewerModalProps = {
@@ -34,6 +35,45 @@ export default function MediaViewerModal({
   const [error, setError] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isPanning, setIsPanning] = useState(false)
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 })
+  const imgRef = useRef<HTMLImageElement>(null)
+
+  const resetView = () => {
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (media?.type !== "image") return
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? -0.1 : 0.1
+    setZoom((z) => Math.max(0.25, Math.min(10, z + delta)))
+  }, [media?.type])
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (media?.type !== "image" || zoom <= 1) return
+    e.preventDefault()
+    setIsPanning(true)
+    setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
+  }, [media?.type, zoom, pan])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isPanning) return
+    setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y })
+  }, [isPanning, panStart])
+
+  const handleMouseUp = useCallback(() => {
+    setIsPanning(false)
+  }, [])
+
+  useEffect(() => {
+    resetView()
+  }, [media?.id])
 
   useEffect(() => {
     setLoading(true)
@@ -184,14 +224,28 @@ export default function MediaViewerModal({
         )
       default:
         return (
-          <div className="relative flex h-full w-full items-center justify-center">
+          <div
+            className="relative flex h-full w-full items-center justify-center overflow-hidden"
+            onWheel={handleWheel}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            style={{ cursor: zoom > 1 ? (isPanning ? "grabbing" : "grab") : "default" }}
+          >
             <img
+              ref={imgRef}
               src={viewerSrc}
               alt={media.name}
               onLoad={() => setLoading(false)}
               onError={() => { setError(true); setLoading(false) }}
-              className="max-h-full max-w-full object-contain transition-opacity duration-300"
-              style={{ opacity: loading ? 0 : 1 }}
+              className="max-h-full max-w-full transition-opacity duration-300"
+              style={{
+                opacity: loading ? 0 : 1,
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transformOrigin: "center",
+              }}
+              draggable={false}
             />
             {loadingOverlay}
           </div>
@@ -235,6 +289,38 @@ export default function MediaViewerModal({
         </div>
 
         <div className="bg-muted/30 border-t p-4 sm:px-10 flex-shrink-0">
+          {media.type === "image" && (
+            <div className="flex items-center gap-2 mb-3">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 px-2"
+                onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))}
+                title="Zoom out"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </Button>
+              <span className="text-xs font-mono min-w-[3rem] text-center">{Math.round(zoom * 100)}%</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 px-2"
+                onClick={() => setZoom((z) => Math.min(10, z + 0.25))}
+                title="Zoom in"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2"
+                onClick={resetView}
+                title="Reset zoom"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-grow">
               {media.width && media.height && (
@@ -311,10 +397,27 @@ export default function MediaViewerModal({
                   </>
                 )}
               </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 px-5 font-medium"
+                onClick={() => setShareOpen(true)}
+              >
+                <Share2 className="mr-2 h-4 w-4" />
+                Share
+              </Button>
             </div>
           </div>
         </div>
       </DialogContent>
+
+      <ShareDialog
+        mediaId={media.id}
+        mediaName={media.name}
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+      />
     </Dialog>
   )
 }
