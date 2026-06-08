@@ -1,20 +1,13 @@
-import { auth } from "@clerk/nextjs/server";
-import UploadDropzone from "@/components/UploadDropZone";
-import { redirect } from "next/navigation";
-import { ImageMedia } from "@/types/media"
+import { auth } from "@clerk/nextjs/server"
+import { redirect } from "next/navigation"
 
+/** Upload lives on the dashboard; keep this route as a stable bookmark. */
 export default async function UploadPage() {
-  const { userId } = await auth();
+  const { userId } = await auth()
 
   if (!userId) {
-    redirect("/sign-in");
+    redirect("/sign-in")
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black">
-      <UploadDropzone onUploadComplete={function (media: ImageMedia): void {
-        throw new Error("Function not implemented.");
-      } } />
-    </div>
-  );
+  redirect("/dashboard")
 }

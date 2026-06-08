@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import {
   Dialog,
@@ -6,44 +6,43 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useState, useEffect } from "react";
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { useState, useEffect } from "react"
 
 type Props = {
-  open: boolean;
-  initialName: string;
-  loading?: boolean;
-  onClose: () => void;
-  onSave: (name: string) => void;
-};
+  open: boolean
+  initialName: string
+  loading?: boolean
+  onClose: () => void
+  onSave: (name: string) => void
+}
 
-export default function RenameImageModal({
+export default function RenameMediaModal({
   open,
   initialName,
   loading,
   onClose,
   onSave,
 }: Props) {
-  const [name, setName] = useState(initialName);
+  const [name, setName] = useState(initialName)
 
-  // Reset name when modal opens for a different image
   useEffect(() => {
-    setName(initialName);
-  }, [initialName]);
+    setName(initialName)
+  }, [initialName])
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Rename image</DialogTitle>
+          <DialogTitle>Rename media</DialogTitle>
         </DialogHeader>
 
         <Input
           value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="Enter image name"
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Enter media name"
           autoFocus
         />
 
@@ -60,5 +59,5 @@ export default function RenameImageModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
