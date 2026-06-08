@@ -99,7 +99,7 @@ export default function DashboardPage() {
     if (isLoaded && isSignedIn) {
       fetchMedia(false)
     }
-  }, [isLoaded, isSignedIn, activeTab, debouncedSearch, sortBy, sortDir, refreshKey, fetchMedia])
+  }, [isLoaded, isSignedIn, activeTab, debouncedSearch, sortBy, sortDir, refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLoadMore = () => {
     const newOffset = offset + PAGE_SIZE

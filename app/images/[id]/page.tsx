@@ -41,7 +41,7 @@ export default function ImagePage({ params, }: ImagePageProps) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setUiParams(processParams);
     }
-  }, [processParams, uiParams]);
+  }, [processParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const debouncedUiParams = useDebouncedValue(uiParams, 400);
 
