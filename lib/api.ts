@@ -1,4 +1,5 @@
-export const API_V1 = "/api/v1"
+const base = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_BACKEND_URL) || ""
+export const API_V1 = `${base}/api/v1`
 
 export interface PaginatedResponse<T> {
   data: T[]
