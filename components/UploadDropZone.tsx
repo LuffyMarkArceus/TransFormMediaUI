@@ -34,7 +34,7 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
   const getFileIcon = (file: File) => {
     if (file.type.startsWith("video/")) return <Film className="w-4 h-4" />
     if (file.type.startsWith("audio/")) return <Music className="w-4 h-4" />
-    return <Image className="w-4 h-4" alt="" />
+    return <Image className="w-4 h-4" />
   }
 
   const uploadFile = async (fileState: UploadFileState) => {
@@ -134,7 +134,7 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
       />
 
       <div className="flex gap-3">
-        <Image className="w-5 h-5 text-muted-foreground" alt="" />
+        <Image className="w-5 h-5 text-muted-foreground" />
         <Film className="w-5 h-5 text-muted-foreground" />
         <Music className="w-5 h-5 text-muted-foreground" />
       </div>

@@ -425,13 +425,16 @@ export default function MediaViewerModal({
 function MetadataItem({
   value,
   icon,
+  label,
 }: {
   value: string
   icon?: React.ReactNode
+  label?: string
 }) {
   return (
     <div className="flex items-center gap-1.5">
       {icon}
+      <span className="text-xs text-muted-foreground">{label && `${label}: `}</span>
       <span className="text-xs">{value}</span>
     </div>
   )

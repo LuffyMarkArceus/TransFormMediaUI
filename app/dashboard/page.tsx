@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import type { Media, MediaType } from "@/types/media"
 import { authHeaders, mediaListPath, type PaginatedResponse } from "@/lib/api"
-import { ImageIcon, Film, Music, Image } from "lucide-react"
+import { ImageIcon, Film, Music } from "lucide-react"
 
 type DashboardTab = MediaType | "all" | "trash"
 const PAGE_SIZE = 20
@@ -235,7 +235,7 @@ export default function DashboardPage() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="all" className="flex items-center gap-1">
-            <Image className="w-4 h-4" alt="" />
+            <ImageIcon className="w-4 h-4" />
             All ({!isTrash ? total : "-"})
           </TabsTrigger>
           <TabsTrigger value="image" className="flex items-center gap-1">
