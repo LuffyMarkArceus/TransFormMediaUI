@@ -73,6 +73,7 @@ export default function ImagePage({ params, }: ImagePageProps) {
       <ImagePreview
         imageId={imageId}
         params={processParams}
+        previewParams={uiParams}
         isProcessing={isProcessing}
         onLoadComplete={() => setIsProcessing(false)}
         onLoadError={() => setIsProcessing(false)}

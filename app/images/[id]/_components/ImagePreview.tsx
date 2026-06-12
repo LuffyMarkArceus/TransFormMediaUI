@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import type { ProcessParams } from "@/lib/image-process-params";
 import { authHeaders, mediaProcessPath } from "@/lib/api";
@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 interface ImagePreviewProps {
   imageId: string;
   params: ProcessParams;
+  previewParams?: ProcessParams;
   isProcessing: boolean;
   onLoadComplete: () => void;
   onLoadError: () => void;
@@ -19,6 +20,7 @@ interface ImagePreviewProps {
 export function ImagePreview({
   imageId,
   params,
+  previewParams,
   isProcessing,
   onLoadComplete,
   onLoadError,
@@ -27,6 +29,23 @@ export function ImagePreview({
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [committedParams, setCommittedParams] = useState(params);
+
+  useEffect(() => {
+    setCommittedParams(params);
+  }, [imageId]);
+
+  const previewFilter = useMemo(() => {
+    if (!previewParams) return "";
+    const parts: string[] = [];
+    if (previewParams.blur && previewParams.blur > 0 && previewParams.blur !== committedParams.blur) {
+      parts.push(`blur(${previewParams.blur}px)`);
+    }
+    if (previewParams.grayscale && !committedParams.grayscale) {
+      parts.push("grayscale(1)");
+    }
+    return parts.join(" ");
+  }, [previewParams, committedParams]);
 
   useEffect(() => {
     let revoked = false;
@@ -70,6 +89,7 @@ export function ImagePreview({
 
         currentUrl = URL.createObjectURL(blob);
         setObjectUrl(currentUrl);
+        setCommittedParams(params);
         setLoading(false);
         onLoadComplete();
       } catch (e) {
@@ -104,6 +124,7 @@ export function ImagePreview({
           src={objectUrl}
           alt="Processed image"
           className={`max-h-[70vh] max-w-full rounded-md object-contain ${loading ? "opacity-0" : "opacity-100"}`}
+          style={previewFilter ? { filter: previewFilter } : undefined}
           draggable={false}
         />
       )}
