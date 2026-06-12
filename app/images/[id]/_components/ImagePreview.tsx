@@ -12,18 +12,24 @@ interface ImagePreviewProps {
   imageId: string;
   params: ProcessParams;
   previewParams?: ProcessParams;
+  comparing?: boolean;
   isProcessing: boolean;
   onLoadComplete: () => void;
   onLoadError: () => void;
+  onCompareStart?: () => void;
+  onCompareEnd?: () => void;
 }
 
 export function ImagePreview({
   imageId,
   params,
   previewParams,
+  comparing,
   isProcessing,
   onLoadComplete,
   onLoadError,
+  onCompareStart,
+  onCompareEnd,
 }: ImagePreviewProps) {
   const { getToken } = useAuth();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -45,7 +51,7 @@ export function ImagePreview({
   }, []);
 
   const previewFilter = useMemo(() => {
-    if (!previewParams) return "";
+    if (comparing || !previewParams) return "";
     const parts: string[] = [];
     if (previewParams.blur && previewParams.blur > 0 && previewParams.blur !== committedParams.blur) {
       parts.push(`blur(${previewParams.blur}px)`);
@@ -54,7 +60,7 @@ export function ImagePreview({
       parts.push("grayscale(1)");
     }
     return parts.join(" ");
-  }, [previewParams, committedParams]);
+  }, [previewParams, committedParams, comparing]);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,13 +134,26 @@ export function ImagePreview({
       )}
 
       {objectUrl && !error && (
-        <img
-          src={objectUrl}
-          alt="Processed image"
-          className={`max-h-[70vh] max-w-full rounded-md object-contain ${loading ? "opacity-0" : "opacity-100"}`}
-          style={previewFilter ? { filter: previewFilter } : undefined}
-          draggable={false}
-        />
+        <div className="relative">
+          <img
+            src={objectUrl}
+            alt="Processed image"
+            className={`max-h-[70vh] max-w-full rounded-md object-contain ${loading ? "opacity-0" : "opacity-100"}`}
+            style={previewFilter ? { filter: previewFilter } : undefined}
+            draggable={false}
+          />
+          <button
+            type="button"
+            onMouseDown={onCompareStart}
+            onMouseUp={onCompareEnd}
+            onMouseLeave={onCompareEnd}
+            onTouchStart={onCompareStart}
+            onTouchEnd={onCompareEnd}
+            className="absolute bottom-2 left-2 rounded-md bg-background/80 px-2 py-1 text-xs text-muted-foreground backdrop-blur-sm transition hover:bg-background/90 active:scale-95"
+          >
+            {comparing ? "Release to compare" : "Hold to compare"}
+          </button>
+        </div>
       )}
 
       {isProcessing && (
