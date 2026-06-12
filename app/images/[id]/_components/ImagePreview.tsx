@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import type { ProcessParams } from "@/lib/image-process-params";
 import { authHeaders, mediaProcessPath } from "@/lib/api";
@@ -30,10 +30,19 @@ export function ImagePreview({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [committedParams, setCommittedParams] = useState(params);
+  const objectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     setCommittedParams(params);
   }, [imageId]);
+
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
+    };
+  }, []);
 
   const previewFilter = useMemo(() => {
     if (!previewParams) return "";
@@ -48,13 +57,11 @@ export function ImagePreview({
   }, [previewParams, committedParams]);
 
   useEffect(() => {
-    let revoked = false;
-    let currentUrl: string | null = null;
+    let cancelled = false;
 
     const load = async () => {
       setLoading(true);
       setError(null);
-      setObjectUrl(null);
 
       const sp = new URLSearchParams();
       if (params.w) sp.set("w", String(params.w));
@@ -85,15 +92,19 @@ export function ImagePreview({
         }
 
         const blob = await res.blob();
-        if (revoked) return;
+        if (cancelled) return;
 
-        currentUrl = URL.createObjectURL(blob);
-        setObjectUrl(currentUrl);
+        const newUrl = URL.createObjectURL(blob);
+        if (objectUrlRef.current) {
+          URL.revokeObjectURL(objectUrlRef.current);
+        }
+        objectUrlRef.current = newUrl;
+        setObjectUrl(newUrl);
         setCommittedParams(params);
         setLoading(false);
         onLoadComplete();
       } catch (e) {
-        if (!revoked) {
+        if (!cancelled) {
           setError(e instanceof Error ? e.message : "Failed to load processed image.")
           setLoading(false);
           onLoadError();
@@ -104,10 +115,7 @@ export function ImagePreview({
     void load();
 
     return () => {
-      revoked = true;
-      if (currentUrl) {
-        URL.revokeObjectURL(currentUrl);
-      }
+      cancelled = true;
     };
   }, [imageId, params, getToken, onLoadComplete, onLoadError]);
 
