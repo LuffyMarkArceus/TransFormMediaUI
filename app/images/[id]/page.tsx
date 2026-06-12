@@ -29,6 +29,8 @@ export default function ImagePage({ params, }: ImagePageProps) {
     h: Number(searchParams.get("h")) || 1080,
     q: Number(searchParams.get("q")) || 85,
     format: searchParams.get("format") || "jpeg",
+    blur: searchParams.get("blur") ? Number(searchParams.get("blur")) : undefined,
+    grayscale: searchParams.get("grayscale") === "true" ? true : undefined,
     cw: searchParams.get("cw") ? Number(searchParams.get("cw")) : undefined,
     ch: searchParams.get("ch") ? Number(searchParams.get("ch")) : undefined,
     gravity: searchParams.get("gravity") || undefined,
@@ -53,6 +55,8 @@ export default function ImagePage({ params, }: ImagePageProps) {
     if (debouncedUiParams.h) sp.set("h", String(debouncedUiParams.h));
     if (debouncedUiParams.q) sp.set("q", String(debouncedUiParams.q));
     if (debouncedUiParams.format) sp.set("format", debouncedUiParams.format);
+    if (debouncedUiParams.blur) sp.set("blur", String(debouncedUiParams.blur));
+    if (debouncedUiParams.grayscale) sp.set("grayscale", "true");
     if (debouncedUiParams.cw) sp.set("cw", String(debouncedUiParams.cw));
     if (debouncedUiParams.ch) sp.set("ch", String(debouncedUiParams.ch));
     if (debouncedUiParams.gravity) sp.set("gravity", debouncedUiParams.gravity);
