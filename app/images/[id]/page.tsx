@@ -33,7 +33,6 @@ export default function ImagePage({ params, }: ImagePageProps) {
   const imageId = unwrappedParams.id;
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [comparing, setComparing] = useState(false);
   
 
   // Parse URL -> strongly types params
@@ -132,21 +131,15 @@ export default function ImagePage({ params, }: ImagePageProps) {
     return () => window.removeEventListener("keydown", handler);
   }, [handleReset, handleGrayscaleToggle, handleUndo, router]);
 
-  const handleCompareStart = useCallback(() => setComparing(true), []);
-  const handleCompareEnd = useCallback(() => setComparing(false), []);
-
   return (
     <div className="flex flex-col md:grid md:grid-cols-[1fr_320px] gap-6">
       <ImagePreview
         imageId={imageId}
         params={processParams}
         previewParams={uiParams}
-        comparing={comparing}
         isProcessing={isProcessing}
         onLoadComplete={() => setIsProcessing(false)}
         onLoadError={() => setIsProcessing(false)}
-        onCompareStart={handleCompareStart}
-        onCompareEnd={handleCompareEnd}
       />
 
       <TransformPanel

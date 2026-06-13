@@ -12,30 +12,25 @@ interface ImagePreviewProps {
   imageId: string;
   params: ProcessParams;
   previewParams?: ProcessParams;
-  comparing?: boolean;
   isProcessing: boolean;
   onLoadComplete: () => void;
   onLoadError: () => void;
-  onCompareStart?: () => void;
-  onCompareEnd?: () => void;
 }
 
 export function ImagePreview({
   imageId,
   params,
   previewParams,
-  comparing,
   isProcessing,
   onLoadComplete,
   onLoadError,
-  onCompareStart,
-  onCompareEnd,
 }: ImagePreviewProps) {
   const { getToken } = useAuth();
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [committedParams, setCommittedParams] = useState(params);
+  const [comparing, setComparing] = useState(false);
   const objectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -144,11 +139,11 @@ export function ImagePreview({
           />
           <button
             type="button"
-            onMouseDown={onCompareStart}
-            onMouseUp={onCompareEnd}
-            onMouseLeave={onCompareEnd}
-            onTouchStart={onCompareStart}
-            onTouchEnd={onCompareEnd}
+            onMouseDown={() => setComparing(true)}
+            onMouseUp={() => setComparing(false)}
+            onMouseLeave={() => setComparing(false)}
+            onTouchStart={() => setComparing(true)}
+            onTouchEnd={() => setComparing(false)}
             className="absolute bottom-2 left-2 rounded-md bg-background/80 px-2 py-1 text-xs text-muted-foreground backdrop-blur-sm transition hover:bg-background/90 active:scale-95"
           >
             {comparing ? "Release to compare" : "Hold to compare"}
