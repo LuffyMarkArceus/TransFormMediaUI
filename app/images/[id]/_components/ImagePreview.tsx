@@ -31,7 +31,9 @@ export function ImagePreview({
   const [error, setError] = useState<string | null>(null);
   const [committedParams, setCommittedParams] = useState(params);
   const [comparing, setComparing] = useState(false);
+  const [compareUrl, setCompareUrl] = useState<string | null>(null);
   const objectUrlRef = useRef<string | null>(null);
+  const compareUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     setCommittedParams(params);
@@ -42,8 +44,21 @@ export function ImagePreview({
       if (objectUrlRef.current) {
         URL.revokeObjectURL(objectUrlRef.current);
       }
+      if (compareUrlRef.current) {
+        URL.revokeObjectURL(compareUrlRef.current);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    setCompareUrl(null);
+    return () => {
+      if (compareUrlRef.current) {
+        URL.revokeObjectURL(compareUrlRef.current);
+        compareUrlRef.current = null;
+      }
+    };
+  }, [imageId, params]);
 
   const previewFilter = useMemo(() => {
     if (comparing || !previewParams) return "";
@@ -120,6 +135,45 @@ export function ImagePreview({
     };
   }, [imageId, params, getToken, onLoadComplete, onLoadError]);
 
+  useEffect(() => {
+    if (!comparing || compareUrl !== null) return;
+
+    let cancelled = false;
+
+    const loadClean = async () => {
+      const sp = new URLSearchParams();
+      if (params.w) sp.set("w", String(params.w));
+      if (params.h) sp.set("h", String(params.h));
+      if (params.format) sp.set("format", params.format);
+      if (params.q) sp.set("q", String(params.q));
+      if (params.cw) sp.set("cw", String(params.cw));
+      if (params.ch) sp.set("ch", String(params.ch));
+      if (params.gravity) sp.set("gravity", params.gravity);
+
+      try {
+        const headers = await authHeaders(getToken);
+        const res = await fetch(mediaProcessPath(imageId, sp), { headers });
+        if (!res.ok || cancelled) return;
+        const blob = await res.blob();
+        if (cancelled) return;
+        const url = URL.createObjectURL(blob);
+        if (compareUrlRef.current) {
+          URL.revokeObjectURL(compareUrlRef.current);
+        }
+        compareUrlRef.current = url;
+        setCompareUrl(url);
+      } catch {
+        // Silently fail — compare just won't swap
+      }
+    };
+
+    void loadClean();
+
+    return () => { cancelled = true; };
+  }, [comparing, compareUrl, imageId, params, getToken]);
+
+  const displayUrl = (comparing && compareUrl) ? compareUrl : objectUrl ?? undefined;
+
   return (
     <div className="relative flex items-center justify-center rounded-lg border bg-muted/30 p-4">
       {loading && !error && <ImageSkeleton />}
@@ -131,8 +185,8 @@ export function ImagePreview({
       {objectUrl && !error && (
         <div className="relative">
           <img
-            src={objectUrl}
-            alt="Processed image"
+            src={displayUrl}
+            alt={comparing ? "Original image" : "Processed image"}
             className={`max-h-[70vh] max-w-full rounded-md object-contain ${loading ? "opacity-0" : "opacity-100"}`}
             style={previewFilter ? { filter: previewFilter } : undefined}
             draggable={false}
@@ -146,7 +200,7 @@ export function ImagePreview({
             onTouchEnd={() => setComparing(false)}
             className="absolute bottom-2 left-2 rounded-md bg-background/80 px-2 py-1 text-xs text-muted-foreground backdrop-blur-sm transition hover:bg-background/90 active:scale-95"
           >
-            {comparing ? "Release to compare" : "Hold to compare"}
+            {comparing ? (compareUrl ? "Release to compare" : "Loading...") : "Hold to compare"}
           </button>
         </div>
       )}
