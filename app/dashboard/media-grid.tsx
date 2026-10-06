@@ -3,7 +3,7 @@
 import axios from "axios"
 import type { Media } from "@/types/media"
 import { useAuth } from "@clerk/nextjs"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ImageIcon, Film, Music, Play, Trash2, CheckSquare, Square, X, RotateCcw, RefreshCw } from "lucide-react"
 
 import RenameMediaModal from "@/components/rename-media-modal"
@@ -13,7 +13,7 @@ import ShareDialog from "@/components/share-dialog"
 import { formatBytes, formatDate } from "@/lib/helpers"
 import { gridThumbnailUrl } from "@/lib/media-url"
 import Link from "next/link"
-import { authHeaders, mediaPath } from "@/lib/api"
+import { API_V1, authHeaders, mediaPath } from "@/lib/api"
 import { toast } from "sonner"
 
 interface MediaGridProps {
@@ -36,42 +36,130 @@ export default function MediaGrid({ mediaItems, setMediaItems, onReload, isTrash
 
   const { getToken } = useAuth()
 
-  // Poll for status changes on items with status="uploaded".
-  // The interval is keyed on the stable upload-set signature, NOT on the
-  // mediaItems array: every poll that flips a status re-renders with a new
-  // array identity, which would otherwise tear down and restart the timer and
-  // fire a duplicate immediate poll every 3s — a request storm.
+  // Track status changes on items with status="uploaded" over a Server-Sent
+  // Events stream, falling back to a slow poll when the stream is unavailable
+  // (older/Redis-less backend) or drops. Each stream reconnect after an error
+  // triggers a coarse reload so events missed during the outage are not lost.
+  // The effect is keyed on the stable upload-set signature, NOT the
+  // mediaItems array: every flipped status re-renders with a new array
+  // identity, which would otherwise tear down and restart the stream every
+  // event — and the interval-based predecessor stormed /info requests.
   const uploadKey = mediaItems
     .filter((m) => m.status === "uploaded")
     .map((m) => m.id)
     .sort()
     .join(",")
 
+  const uploadIds = useRef(new Set<string>())
+  uploadIds.current = new Set(uploadKey ? uploadKey.split(",") : [])
+
   useEffect(() => {
     const uploading = mediaItems.filter((m) => m.status === "uploaded")
-    if (uploading.length === 0) return
+    if (uploading.length === 0 || isTrash) return
 
-    const poll = async () => {
+    const ids = uploading.map((m) => m.id)
+    let disposed = false
+    let es: EventSource | null = null
+    let pollTimer: ReturnType<typeof setInterval> | null = null
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let reconnectAttempts = 0
+    let missedEvents = false
+
+    const refreshItem = async (id: string) => {
       try {
         const headers = await authHeaders(getToken)
-
-        for (const item of uploading) {
-          const res = await axios.get<Media>(mediaPath(`/${item.id}/info`), { headers })
-          if (res.data.status !== "uploaded") {
-            setMediaItems(prev => prev.map(m => m.id === item.id ? res.data : m))
-          }
+        const res = await axios.get<Media>(mediaPath(`/${id}/info`), { headers })
+        if (res.data.status !== "uploaded") {
+          setMediaItems((prev) => prev.map((m) => (m.id === id ? res.data : m)))
         }
       } catch {
-        // Network errors during polling are harmless
+        // A flaky request must not kill the stream; the next event/poll retries.
       }
     }
 
-    const interval = setInterval(poll, 3000)
-    poll()
+    const stopPoll = () => {
+      if (pollTimer) {
+        clearInterval(pollTimer)
+        pollTimer = null
+      }
+    }
 
-    return () => clearInterval(interval)
+    const startFallbackPoll = () => {
+      stopPoll()
+      // Catch up immediately, then keep polling while the stream is down.
+      ids.forEach(refreshItem)
+      pollTimer = setInterval(() => ids.forEach(refreshItem), 10_000)
+    }
+
+    const closeStream = () => {
+      if (es) {
+        es.onopen = null
+        es.onmessage = null
+        es.onerror = null
+        es.close()
+        es = null
+      }
+    }
+
+    const setup = async () => {
+      if (disposed || es) return
+
+      let token: string | null = null
+      try {
+        const headers = await authHeaders(getToken)
+        const res = await axios.post<{ token: string }>(`${API_V1}/events/authorize`, {}, { headers })
+        token = res.data.token
+      } catch {
+        token = null
+      }
+      if (disposed) return
+
+      if (!token) {
+        // No event bus on the backend: poll slowly for as long as items are
+        // uploading, without hammering the /info endpoint.
+        startFallbackPoll()
+        return
+      }
+
+      es = new EventSource(`${API_V1}/events/stream?token=${encodeURIComponent(token)}`)
+      es.onopen = () => {
+        if (missedEvents) {
+          missedEvents = false
+          stopPoll()
+          onReload() // refetch whatever changed while the stream was down
+        }
+      }
+      // The backend frames status transitions as "event: status", so they
+      // arrive via addEventListener, not the catch-all onmessage handler.
+      es.addEventListener("status", (ev) => {
+        try {
+          const data = JSON.parse((ev as MessageEvent<string>).data) as { mediaID?: string; status?: string }
+          if (data.status === "uploaded" || !data.mediaID) return
+          if (uploadIds.current.has(data.mediaID)) refreshItem(data.mediaID)
+        } catch {
+          // Ignore malformed frames.
+        }
+      })
+      es.onerror = () => {
+        closeStream()
+        missedEvents = true
+        startFallbackPoll()
+        reconnectAttempts += 1
+        const delay = Math.min(30_000, 3_000 * reconnectAttempts)
+        reconnectTimer = setTimeout(setup, delay)
+      }
+    }
+
+    setup()
+
+    return () => {
+      disposed = true
+      closeStream()
+      stopPoll()
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadKey, getToken])
+  }, [uploadKey, getToken, onReload, isTrash])
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
