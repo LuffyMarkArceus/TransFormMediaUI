@@ -90,6 +90,11 @@ export default function ImagePage({ params, }: ImagePageProps) {
     }
   }, []);
 
+  // Stable identities: ImagePreview keys its fetch effect on these callbacks,
+  // so inline arrows here would re-trigger the request on every render.
+  const handleLoadComplete = useCallback(() => setIsProcessing(false), []);
+  const handleLoadError = useCallback(() => setIsProcessing(false), []);
+
   const onTransformChange = useCallback((next: ProcessParams) => {
     undoStackRef.current.push(uiParamsRef.current);
     setUiParams(next);
@@ -138,12 +143,12 @@ export default function ImagePage({ params, }: ImagePageProps) {
         params={processParams}
         previewParams={uiParams}
         isProcessing={isProcessing}
-        onLoadComplete={() => setIsProcessing(false)}
-        onLoadError={() => setIsProcessing(false)}
+        onLoadComplete={handleLoadComplete}
+        onLoadError={handleLoadError}
       />
 
       <TransformPanel
-        params={processParams}
+        params={uiParams}
         onProcessingStart={() => setIsProcessing(true)}
         onChange={(next) => {
           setIsProcessing(true);

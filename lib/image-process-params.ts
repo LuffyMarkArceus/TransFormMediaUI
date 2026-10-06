@@ -50,7 +50,7 @@ export function parseProcessParams(
     h: getInt("h"),
     q: getInt("q"),
     format:
-      format === "jpeg" || format === "png" || format === "webp"
+      format === "jpeg" || format === "png"
         ? format
         : undefined,
     blur: blur ? Number(blur) : undefined,

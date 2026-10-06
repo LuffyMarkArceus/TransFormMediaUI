@@ -57,15 +57,18 @@ export default function DashboardPage() {
     }
   }, [isLoaded, isSignedIn, router])
 
-  const fetchMedia = useCallback(async (append = false) => {
+  // offset is passed explicitly rather than read from the closure: state
+  // updates are not visible to the running handler, so closure reads go stale
+  // and "Load More" would re-fetch the same page (or worse, skip+duplicate).
+  const fetchMedia = useCallback(async (append: boolean, atOffset: number) => {
     try {
+      setError(null)
       if (append) {
         setLoadingMore(true)
       } else {
         setLoading(true)
       }
       const headers = await authHeaders(getToken)
-      const currentOffset = append ? offset : 0
       const res = await axios.get<PaginatedResponse<Media>>(
         mediaListPath({
           type: activeTab === "all" || isTrash ? undefined : activeTab,
@@ -74,7 +77,7 @@ export default function DashboardPage() {
           sortBy,
           sortDir,
           limit: PAGE_SIZE,
-          offset: currentOffset,
+          offset: append ? atOffset : 0,
         }),
         { headers }
       )
@@ -93,18 +96,18 @@ export default function DashboardPage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [getToken, activeTab, debouncedSearch, sortBy, sortDir, offset, isTrash])
+  }, [getToken, activeTab, debouncedSearch, sortBy, sortDir, isTrash])
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
-      fetchMedia(false)
+      fetchMedia(false, 0)
     }
-  }, [isLoaded, isSignedIn, activeTab, debouncedSearch, sortBy, sortDir, refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoaded, isSignedIn, activeTab, debouncedSearch, sortBy, sortDir, refreshKey, fetchMedia])
 
   const handleLoadMore = () => {
     const newOffset = offset + PAGE_SIZE
     setOffset(newOffset)
-    fetchMedia(true)
+    fetchMedia(true, newOffset)
   }
 
   const handleReload = () => {

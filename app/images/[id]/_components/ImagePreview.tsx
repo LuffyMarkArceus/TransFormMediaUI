@@ -74,6 +74,7 @@ export function ImagePreview({
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
 
     const load = async () => {
       setLoading(true);
@@ -92,7 +93,7 @@ export function ImagePreview({
 
       try {
         const headers = await authHeaders(getToken);
-        const res = await fetch(mediaProcessPath(imageId, sp), { headers });
+        const res = await fetch(mediaProcessPath(imageId, sp), { headers, signal: controller.signal });
 
         if (!res.ok) {
           let message = `Processing failed (${res.status})`
@@ -120,7 +121,9 @@ export function ImagePreview({
         setLoading(false);
         onLoadComplete();
       } catch (e) {
-        if (!cancelled) {
+        // Aborted requests are expected on every param change; showing an
+        // error for them would flash error states during normal use.
+        if (!cancelled && !(e instanceof DOMException && e.name === "AbortError")) {
           setError(e instanceof Error ? e.message : "Failed to load processed image.")
           setLoading(false);
           onLoadError();
@@ -132,6 +135,7 @@ export function ImagePreview({
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [imageId, params, getToken, onLoadComplete, onLoadError]);
 
@@ -139,6 +143,7 @@ export function ImagePreview({
     if (!comparing || compareUrl !== null) return;
 
     let cancelled = false;
+    const controller = new AbortController();
 
     const loadClean = async () => {
       const sp = new URLSearchParams();
@@ -152,7 +157,7 @@ export function ImagePreview({
 
       try {
         const headers = await authHeaders(getToken);
-        const res = await fetch(mediaProcessPath(imageId, sp), { headers });
+        const res = await fetch(mediaProcessPath(imageId, sp), { headers, signal: controller.signal });
         if (!res.ok || cancelled) return;
         const blob = await res.blob();
         if (cancelled) return;
@@ -163,13 +168,17 @@ export function ImagePreview({
         compareUrlRef.current = url;
         setCompareUrl(url);
       } catch {
-        // Silently fail — compare just won't swap
+        // Silently fail — compare just won't swap. Aborted fetches land here
+        // on every param change and are expected.
       }
     };
 
     void loadClean();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [comparing, compareUrl, imageId, params, getToken]);
 
   const displayUrl = (comparing && compareUrl) ? compareUrl : objectUrl ?? undefined;

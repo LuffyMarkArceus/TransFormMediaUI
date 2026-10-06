@@ -36,9 +36,19 @@ export default function MediaGrid({ mediaItems, setMediaItems, onReload, isTrash
 
   const { getToken } = useAuth()
 
-  // Poll for status changes on items with status="uploaded"
+  // Poll for status changes on items with status="uploaded".
+  // The interval is keyed on the stable upload-set signature, NOT on the
+  // mediaItems array: every poll that flips a status re-renders with a new
+  // array identity, which would otherwise tear down and restart the timer and
+  // fire a duplicate immediate poll every 3s — a request storm.
+  const uploadKey = mediaItems
+    .filter((m) => m.status === "uploaded")
+    .map((m) => m.id)
+    .sort()
+    .join(",")
+
   useEffect(() => {
-    const uploading = mediaItems.filter(m => m.status === "uploaded")
+    const uploading = mediaItems.filter((m) => m.status === "uploaded")
     if (uploading.length === 0) return
 
     const poll = async () => {
@@ -60,7 +70,8 @@ export default function MediaGrid({ mediaItems, setMediaItems, onReload, isTrash
     poll()
 
     return () => clearInterval(interval)
-  }, [mediaItems, getToken, setMediaItems])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadKey, getToken])
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
