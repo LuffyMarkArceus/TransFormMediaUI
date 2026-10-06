@@ -26,4 +26,10 @@ jobs:
         run: npm run lint
 
       - name: Build
+        # Clerk requires NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY during static page
+        # generation. The publishable key is a public value (shipped to every
+        # browser), so the real one is committed here as a fallback; override
+        # it later with a GitHub Actions secret of the same name if desired.
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_bGVhcm5pbmctZGluZ28tOTYuY2xlcmsuYWNjb3VudHMuZGV2JA' }}
         run: npm run build
