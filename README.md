@@ -1,87 +1,99 @@
-# Frontend Status – Universal Media Service (UI)
+# Universal Media Service — Frontend (Next.js UI)
 
-## Authentication
+The web client for the media backend: Clerk auth, drag-and-drop upload, a filterable dashboard, a media viewer, and an image editor whose parameters map 1:1 to the backend's dynamic processing API.
+
+| | |
+|---|---|
+| **Production** | https://ums-media-forge-ui.vercel.app |
+| **Backend** | https://media-server-qbo2eammia-uc.a.run.app (direct browser calls) |
+| **Stack** | Next.js (App Router) · TypeScript · Tailwind + shadcn/ui · Clerk · axios · SSE |
+| **Last updated** | 2026-10-07 — see [`PROGRESS_REPORT.md`](PROGRESS_REPORT.md) for the full breakdown |
+| **Size** | ~3.6k LOC TS/TSX, 35 commits, CI green (eslint + `next build`) on HEAD `32d3277` |
+
+## Status at a glance
+
+| Area | Complete | Notes |
+|---|---|---|
+| Authentication | 100% | Clerk, protected routes, user-scoped data |
+| Upload | 90% | Drag & drop, progress, per-file errors; capped by the backend's ~32 MB platform limit |
+| Dashboard & grid | 95% | Search/sort/pagination/tabs/stats/batch/trash; no virtualization yet |
+| Media viewer | 100% | Keyboard nav, zoom/pan, share, video & audio playback |
+| Image editor | 95% | URL-driven params, crop/gravity, undo, compare, instant preview |
+| Media operations | 100% | Rename, replace, trash/restore/permanent, batch delete |
+| Theme | 100% | Light/dark, persisted, hydration-safe |
+| Real-time status | 100% | SSE stream with automatic poll fallback |
+| Performance & UX polish | 85% | Blob-URL race and fetch-storm fixes; grid not virtualized |
+| Testing | 10% | No tests, no test script |
+| CI/CD | 100% | Vercel production deploys from `main`; lint + build in CI |
+
+**Overall ≈ 88%.** Remaining work is prioritized in [`PROGRESS_REPORT.md`](PROGRESS_REPORT.md).
+
+## Feature status
+
+### Authentication
 - [x] Clerk authentication integrated
 - [x] Protected dashboard routes
 - [x] User-scoped data access
 - [x] Trash view with restore/permanent delete
 
-## Image Upload
-- [x] Drag & drop upload UI
-- [x] Multipart upload to backend
-- [x] Upload progress indicator
-- [x] Large file handling (>10MB)
-- [x] Upload retry on failure
-- [x] Replace media (file picker on grid card)
-- [x] Client-side MIME validation
+### Upload
+- [x] Drag & drop upload UI (click or drop, multi-file queue)
+- [x] Multipart upload directly to the backend (`NEXT_PUBLIC_BACKEND_URL`, bypasses the Vercel proxy)
+- [x] Per-file progress bars, success/failure toasts
+- [x] Client-side MIME validation + accept filter (images, video, audio)
+- [x] Replace media (file picker on the grid card)
+- [ ] Automatic retry / resumable uploads
+- [ ] Files > ~32 MB: rejected by the Cloud Run front end with an HTML 413 — not surfaced as a friendly size error
 
-## Dashboard & Image Grid
-- [x] Responsive image grid
-- [x] Thumbnail-based rendering
-- [x] Empty state handling (per type)
-- [x] Reload image list after upload/delete
-- [x] Pagination (Load More button with count)
-- [x] Search by image name (debounced 400ms)
-- [x] Sort by date, name, size (asc/desc)
-- [x] Type tabs (All/Images/Videos/Audio/Trash)
-- [x] Processing badge for async items (animated)
-- [x] Failed status indicator
-- [x] Live status polling (auto-updates badges when worker finishes)
-- [x] Reprocess button for failed items (resets to "uploaded")
-- [x] Batch selection (checkboxes)
-- [x] Batch delete (with trash support)
-- [x] Trash tab with restore + permanent delete
+### Dashboard & media grid
+- [x] Responsive grid with thumbnails and per-type empty states
+- [x] Pagination (Load More with count), debounced search (400 ms), sort by date/name/size
+- [x] Type tabs: All / Images / Videos / Audio / Trash
 - [x] Stats cards (image/video/audio counts + storage used)
+- [x] Processing & failed badges; reprocess button for failures
+- [x] Live status: SSE stream (`event: status`) with automatic 10 s poll fallback and reload-on-reconnect
+- [x] Batch selection + batch delete (trash-aware)
+- [ ] Virtualized grid for very large collections
 
-## Media Viewer
-- [x] Modal-based media viewer
-- [x] Uses processed image URL
-- [x] Next / previous navigation
-- [x] Keyboard arrow navigation
-- [x] Keyboard shortcuts (d=download, c=copy URL, o=open original)
-- [x] Metadata display (resolution, duration, size, format, date)
-- [x] Interactive zoom (scroll, +/-, pan on drag)
-- [x] Zoom reset button
-- [x] Share button (generates signed link)
+### Media viewer
+- [x] Modal viewer for images, `<video>` and `<audio>` playback
+- [x] Next/previous + arrow-key navigation, shortcuts (`d` download, `c` copy URL, `o` open original)
+- [x] Zoom (scroll, ±, drag-to-pan) with reset
+- [x] Metadata display: resolution, duration, size, format, date
+- [x] Share button (signed link, 7-day expiry)
 
-## Image Editor
-- [x] URL-driven processing params
-- [x] Width, height, quality sliders
-- [x] Format selector (JPEG/PNG/WebP)
-- [x] Blur slider (0-20)
-- [x] Grayscale toggle
-- [x] Crop width/height sliders with gravity selector (9 anchor points)
-- [x] Debounced param updates (400ms)
-- [x] Reset to defaults
-- [x] Processing overlay during reprocess
+### Image editor
+- [x] URL-driven processing params (shareable/refresh-safe state)
+- [x] Width/height/quality, format **JPEG/PNG** (WebP was removed backend-side), blur 0–20, grayscale
+- [x] Crop with 9-anchor gravity selector
+- [x] Debounced updates (400 ms), reset to defaults, processing overlay
+- [x] Instant CSS preview for blur/grayscale sliders
+- [x] Undo stack, compare mode (hold to compare), keyboard shortcuts
+- [ ] Video/audio editing (viewer only — backend A/V transforms are not exposed)
 
-## Media Operations
-- [x] Delete (soft delete / trash)
-- [x] Rename (modal-based)
+### Media operations
+- [x] Rename (modal), delete to trash, restore, permanent delete, batch delete
 - [x] Optimistic UI updates
-- [x] Replace media
-- [x] Batch operations (multi-select + batch delete)
-- [x] Restore from trash
-- [x] Permanent delete
-- [x] Share (generates shareable link with 7-day expiry)
+- [x] Replace media in place
 
-## Theme & Appearance
-- [x] Site-wide light / dark mode toggle
-- [x] Persist theme preference (localStorage / cookie)
-- [x] Respect system preference on first load
-- [x] Theme hydration without flicker
-- [x] Consistent dark mode across all routes
-- [x] shadcn/ui component primitives
+### Theme & appearance
+- [x] Light/dark toggle, persisted, system preference on first load, no hydration flicker
+- [x] shadcn/ui primitives
 
-## Overall Status
-- [x] Core media workflows complete
-- [x] Advanced UX (batch ops, trash, effects, sharing)
-- [ ] Performance optimizations (virtualized grid)
-- [ ] Testing infrastructure
+## Deployment
 
-## Quick Start
+- **Hosting:** Vercel, production branch `main`, project `ums-media-forge-ui`.
+- **CI:** `.github/workflows` — eslint + `next build` on push and PRs (the build needs a Clerk publishable key supplied as a CI secret).
+- **Env vars** (Vercel dashboard): `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_BACKEND_URL`, `BACKEND_URL` (for the `/api/:path*` rewrite), `NEXT_PUBLIC_R2_PUBLIC_BASE_URL`.
+
 ```bash
-cp .env.example .env    # fill in your env vars
+cp .env.example .env.local   # fill in Clerk + backend URL
 npm install
-npm run dev
+npm run dev                  # http://localhost:3000
+npm run lint                 # same check as CI
 ```
+
+## Remaining work
+
+Prioritized, with effort estimates: [`PROGRESS_REPORT.md`](PROGRESS_REPORT.md).
+Backend status and API reference: `universal-media-service/README.md`.
