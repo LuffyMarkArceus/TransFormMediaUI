@@ -12,6 +12,8 @@ import ShareDialog from "@/components/share-dialog"
 
 import { formatBytes, formatDate } from "@/lib/helpers"
 import { gridThumbnailUrl } from "@/lib/media-url"
+import { getApiErrorMessage } from "@/lib/api-error"
+import { formatCap, MULTIPART_MAX_BYTES } from "@/lib/upload-limits"
 import Link from "next/link"
 import { API_V1, authHeaders, mediaPath } from "@/lib/api"
 import { toast } from "sonner"
@@ -488,6 +490,16 @@ export default function MediaGrid({ mediaItems, setMediaItems, onReload, isTrash
                         input.onchange = async (e) => {
                           const file = (e.target as HTMLInputElement).files?.[0]
                           if (!file) return
+                          // Replace uploads go multipart through the
+                          // hosting frontend, which cuts request bodies at
+                          // ~32 MB with a non-JSON 413 — fail early with a
+                          // clear message instead.
+                          if (file.size > MULTIPART_MAX_BYTES) {
+                            toast.error(
+                              `Replace only accepts files up to ${formatCap(MULTIPART_MAX_BYTES)} (this file is ${formatCap(file.size)}). Upload it as a new item instead.`
+                            )
+                            return
+                          }
                           const formData = new FormData()
                           formData.append('file', file)
                           try {
@@ -495,8 +507,9 @@ export default function MediaGrid({ mediaItems, setMediaItems, onReload, isTrash
                             await axios.put(mediaPath(`/${item.id}`), formData, { headers })
                             toast.success('Media replaced successfully')
                             onReload()
-                          } catch {
-                            toast.error('Failed to replace media')
+                          } catch (err) {
+                            console.error('Replace error:', err)
+                            toast.error(getApiErrorMessage(err, 'Failed to replace media'))
                           }
                         }
                         input.click()

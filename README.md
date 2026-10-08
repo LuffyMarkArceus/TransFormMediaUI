@@ -7,7 +7,7 @@ The web client for the media backend: Clerk auth, drag-and-drop upload, a filter
 | **Production** | https://ums-media-forge-ui.vercel.app |
 | **Backend** | https://media-server-qbo2eammia-uc.a.run.app (direct browser calls) |
 | **Stack** | Next.js (App Router) · TypeScript · Tailwind + shadcn/ui · Clerk · axios · SSE |
-| **Last updated** | 2026-10-07 — see [`PROGRESS_REPORT.md`](PROGRESS_REPORT.md) for the full breakdown |
+| **Last updated** | 2026-10-08 — see [`PROGRESS_REPORT.md`](PROGRESS_REPORT.md) for the full breakdown |
 | **Size** | ~3.6k LOC TS/TSX, 35 commits, CI green (eslint + `next build`) on HEAD `32d3277` |
 
 ## Status at a glance
@@ -38,12 +38,13 @@ The web client for the media backend: Clerk auth, drag-and-drop upload, a filter
 
 ### Upload
 - [x] Drag & drop upload UI (click or drop, multi-file queue)
-- [x] Multipart upload directly to the backend (`NEXT_PUBLIC_BACKEND_URL`, bypasses the Vercel proxy)
-- [x] Per-file progress bars, success/failure toasts
+- [x] Presigned direct-to-storage flow: `POST /media/uploads` → PUT straight to R2 with live progress (5–95%) → `POST /media/:id/complete` (`components/UploadDropZone.tsx`)
+- [x] Honest size caps in `lib/upload-limits.ts`: images 32 MB, video/audio 500 MB (`MAX_UPLOAD_BYTES`), multipart/replace 30 MB (`MULTIPART_MAX_BYTES`, below the ~32 MB Cloud Run front-end request cap)
+- [x] Per-file progress bars, success/failure toasts, per-file retry (restarts the presign flow)
 - [x] Client-side MIME validation + accept filter (images, video, audio)
-- [x] Replace media (file picker on the grid card)
+- [x] Friendly errors for HTML/non-JSON 413 responses and storage-PUT failures (`lib/api-error.ts`)
+- [x] Replace media (file picker on the grid card) — guarded at 30 MB with a clear message, real API errors surfaced
 - [ ] Automatic retry / resumable uploads
-- [ ] Files > ~32 MB: rejected by the Cloud Run front end with an HTML 413 — not surfaced as a friendly size error
 
 ### Dashboard & media grid
 - [x] Responsive grid with thumbnails and per-type empty states

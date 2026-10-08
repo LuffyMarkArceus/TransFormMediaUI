@@ -8,10 +8,10 @@ import { Progress } from "@/components/ui/progress"
 import type { Media } from "@/types/media"
 import { ALL_SUPPORTED_TYPES } from "@/types/media"
 import { authHeaders, mediaPath } from "@/lib/api"
-import { getApiErrorMessage } from "@/lib/api-error"
+import { getApiErrorMessage, presignPutErrorMessage } from "@/lib/api-error"
+import { formatCap, maxBytesFor, precheckFile } from "@/lib/upload-limits"
 import { toast } from "sonner"
 import { Film, Music, Image } from "lucide-react"
-
 
 interface UploadDropZoneProps {
   onUploadComplete: (media: Media) => void
@@ -24,12 +24,16 @@ interface UploadFileState {
   status: "pending" | "uploading" | "success" | "error"
 }
 
+// Uploads run the presigned direct-to-storage flow: the backend validates
+// the file and returns an id plus a time-limited PUT URL, the browser PUTs
+// the bytes straight to storage (progress 5→95%), and a final complete call
+// verifies the object and enqueues processing. Nothing large transits the
+// backend, so files up to 500 MB work despite the ~32 MB request limit of
+// the hosting frontend.
 export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps) {
   const { getToken } = useAuth()
   const [dragging, setDragging] = useState(false)
   const [files, setFiles] = useState<UploadFileState[]>([])
-
-  const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024
 
   const getFileIcon = (file: File) => {
     if (file.type.startsWith("video/")) return <Film className="w-4 h-4" />
@@ -37,41 +41,100 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
     return <Image className="w-4 h-4" />
   }
 
+  const putToStorage = (
+    uploadUrl: string,
+    file: File,
+    onProgress: (pct: number) => void
+  ): Promise<void> =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open("PUT", uploadUrl)
+      // The backend signs this exact value into the presigned URL; any
+      // other Content-Type fails the signature check server-side.
+      xhr.setRequestHeader("Content-Type", file.type)
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable && evt.total > 0) {
+          onProgress(Math.round((evt.loaded * 100) / evt.total))
+        }
+      }
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve()
+        } else {
+          reject(
+            new PresignPutError(
+              presignPutErrorMessage(
+                xhr.status,
+                xhr.responseText,
+                `Storage rejected the upload (HTTP ${xhr.status}).`
+              )
+            )
+          )
+        }
+      }
+      xhr.onerror = () =>
+        reject(
+          new PresignPutError(
+            presignPutErrorMessage(
+              0,
+              "",
+              "Could not reach storage to upload the file."
+            )
+          )
+        )
+      xhr.onabort = () => reject(new PresignPutError("Upload was cancelled."))
+      xhr.send(file)
+    })
+
   const uploadFile = async (fileState: UploadFileState) => {
-    const formData = new FormData()
-    formData.append("file", fileState.file)
+    const { file } = fileState
+    let beginId: string | null = null
 
     try {
-      updateFileState(fileState.file, { status: "uploading", progress: 0 })
-
+      updateFileState(file, { status: "uploading", progress: 0, error: undefined })
       const headers = await authHeaders(getToken)
-      const res = await axios.post(mediaPath(), formData, {
-        headers,
-        onUploadProgress: (evt) => {
-          if (!evt.total) return
-          const pct = Math.round((evt.loaded * 100) / evt.total)
-          updateFileState(fileState.file, { progress: pct })
-        },
+
+      // 1) Validate + reserve quota + get a presigned PUT URL.
+      const begin = await axios.post(
+        mediaPath("/uploads"),
+        { name: file.name, contentType: file.type, size: file.size },
+        { headers }
+      )
+      beginId = begin.data.id as string
+      const uploadUrl = begin.data.uploadUrl as string
+      updateFileState(file, { progress: 5 })
+
+      // 2) Stream the bytes straight to storage.
+      await putToStorage(uploadUrl, file, (pct) => {
+        updateFileState(file, { progress: 5 + Math.round(pct * 0.9) })
       })
 
+      // 3) Verify the stored object and flip it to "uploaded" so the
+      //    worker picks it up.
+      const res = await axios.post(mediaPath(`/${beginId}/complete`), {}, { headers })
+
       onUploadComplete(res.data)
-      updateFileState(fileState.file, { status: "success", progress: 100 })
-      toast.success(`${fileState.file.name} uploaded successfully`)
+      updateFileState(file, { status: "success", progress: 100 })
+      toast.success(`${file.name} uploaded successfully`)
     } catch (err) {
       console.error("Upload error:", err)
-      const msg = getApiErrorMessage(
-        err,
-        "Upload failed. Please try again."
-      )
-      updateFileState(fileState.file, { status: "error", error: msg })
-      toast.error(`${fileState.file.name}: ${msg}`)
-    }
-    finally {
+      const fallback =
+        err instanceof PresignPutError
+          ? err.message
+          : "Upload failed. Please try again."
+      const msg = getApiErrorMessage(err, fallback)
+      updateFileState(file, { status: "error", error: msg })
+      toast.error(`${file.name}: ${msg}`)
+      if (beginId) {
+        // The pending row (if the PUT never happened) is reaped by the
+        // backend's sweeper; nothing else to clean up here.
+        console.info(`Pending upload ${beginId} left for the sweeper.`)
+      }
+    } finally {
       setTimeout(() => {
-        setFiles((prevFiles) => prevFiles.filter((f) => f.file !== fileState.file))
+        setFiles((prevFiles) => prevFiles.filter((f) => f.file !== file))
       }, 3000)
     }
-
   }
 
   const updateFileState = (file: File, updates: Partial<UploadFileState>) => {
@@ -89,8 +152,9 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
         return
       }
 
-      if (file.size > MAX_FILE_SIZE_BYTES) {
-        toast.error(`${file.name} exceeds the maximum size of 500 MB.`)
+      const capError = precheckFile(file)
+      if (capError) {
+        toast.error(capError)
         return
       }
 
@@ -139,7 +203,10 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
         <Music className="w-5 h-5 text-muted-foreground" />
       </div>
       <p className="text-sm font-medium">Drag & drop images, videos, or audio</p>
-      <p className="text-xs text-muted-foreground">or click to browse</p>
+      <p className="text-xs text-muted-foreground">
+        or click to browse (images up to {formatCap(maxBytesFor("image/"))},
+        video/audio up to {formatCap(maxBytesFor("video/mp4"))})
+      </p>
 
       {files.length > 0 && (
         <div className="w-full max-w-xs pt-2">
@@ -166,6 +233,9 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
                   </span>
                 </div>
                 <Progress value={f.progress} />
+                {f.status === "error" && f.error && (
+                  <p className="text-[10px] leading-tight text-red-500">{f.error}</p>
+                )}
               </div>
           ))}
         </div>
@@ -173,3 +243,7 @@ export default function UploadDropZone({ onUploadComplete }: UploadDropZoneProps
     </Card>
   )
 }
+
+// Marker so the catch block can tell storage-PUT failures (message already
+// user-facing) apart from API errors without re-parsing.
+class PresignPutError extends Error {}

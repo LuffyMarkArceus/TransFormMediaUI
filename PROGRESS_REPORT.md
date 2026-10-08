@@ -77,13 +77,22 @@
 
 This is deliberately sequenced after the backend: until Phase 2 exists there is no honest UI beyond a correct 30 MB guard.
 
+### Update — 2026-10-08: Phases 0 + 2 implemented (UI)
+
+Code complete, committed locally, not yet pushed/deployed; depends on the backend branch shipping the presign endpoints.
+
+- **Phase 0:** `lib/upload-limits.ts` centralises the caps (`MULTIPART_MAX_BYTES` 30 MB for the multipart/replace path, `MAX_IMAGE_BYTES` 32 MB, `MAX_UPLOAD_BYTES` 500 MB with per-file `precheckFile`); `lib/api-error.ts` maps HTML/non-JSON `413` to the "file is too large for this deployment" sentence and gained `presignPutErrorMessage` (status 0 → network/CORS wording, never a retry-loop generic); the grid **Replace** flow now rejects >30 MB up front with the cap in the message and surfaces the real API error via `getApiErrorMessage` instead of a silent generic toast.
+- **Phase 2:** `components/UploadDropZone.tsx` rewritten to the 3-step presign flow — begin (5%) → `XMLHttpRequest` PUT straight to R2 (progress mapped 5→95%, `Content-Type` exactly as signed) → complete (100%) → `onUploadComplete`. Per-file retry restarts the whole flow (abandoned `pending` rows are reaped by the backend sweeper). Failures keep their message on the file row instead of vanishing into a toast.
+- Verified: `eslint` 0 errors, `tsc --noEmit` clean, `next build` green. Presign E2E against a local backend passed (happy path, content/size mismatch, pending hidden) — **browser** E2E still blocked on R2 bucket CORS (needs the Cloudflare dashboard or a token with `PutBucketCORS`; the deploy token returns `AccessDenied`).
+
+
 ---
 
 ## 5. Known limitations & deliberate trade-offs
 
 | Limitation | Status |
 |---|---|
-| Files > ~32 MB → HTML 413 from Cloud Run's front end | Platform limit; backend P0 covers the real fix |
+| Files > ~32 MB → HTML 413 from Cloud Run's front end | Only affects the multipart/replace path now (guarded client-side at 30 MB); new uploads go presigned direct to R2 up to 500 MB |
 | Editor is image-only | Backend `/process` rejects non-images by design |
 | SSE stream opens only for `uploaded` items | By design — small uploads are processed inline and never enter `uploaded` |
 | `X-Cache` invisible to cross-origin `fetch()` | CORS exposes only safelisted response headers |
